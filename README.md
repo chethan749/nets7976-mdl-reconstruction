@@ -16,11 +16,12 @@ principle, network reconstruction from noisy data, and message-passing inference
 | `week-4/code/young-viz/` | Interactive walkthrough of Young, Cantwell & Newman (2020), *Bayesian inference of network structure from unreliable data*, on the dolphin data. |
 | `week-4/code/viz-common/` | The Week 4 samplers (Metropolis, HMC, R̂, ESS), the Poisson-mixture model, and a Web Worker that runs them. |
 | `week-4/code/stan_check.py` | Fits the dolphin models in CmdStan, to check the in-browser samplers against Stan. |
-| `week-5/code/peixoto-viz/` | Interactive walkthrough of Peixoto (2025), *Network reconstruction via the minimum description length principle*: L1 vs. the quantized MDL prior on a kinetic Ising model of the karate club, with the greedy fit animated. `precompute.mjs` (Node) regenerates its Fig. 2 data. |
+| `week-5/code/peixoto-viz/` | Interactive walkthrough of Peixoto (2025), *Network reconstruction via the minimum description length principle*: L1 vs. the quantized MDL prior on a kinetic Ising model of the karate club, with the greedy fit animated, and every move of a sweep (§V) run one at a time with its random bisection search shown probe by probe (`js/search.js`). `precompute.mjs` (Node) regenerates its Fig. 2 data. |
+| `week-5/code/landscape_figure.py` | Draws the §7 rugged-landscape figure (macrostates as peaks, configurations above them) from the same toy model as the live replica demo. Needs matplotlib. |
 
 ## Running
 
-Python scripts need only NumPy:
+Python scripts need only NumPy (plus matplotlib for `landscape_figure.py`):
 
 ```bash
 python week-2/code/two_part_mdl.py both

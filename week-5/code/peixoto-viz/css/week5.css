@@ -14,3 +14,10 @@ table.recipe.card { padding: 4px 8px; margin: 4px 0 8px; max-width: 900px; displ
   input[type="range"].wide { width: 140px; }
   table.recipe.card { display: block; overflow-x: auto; }
 }
+.plot canvas { display: block; width: 100%; }
+.card.fig { margin: 0 0 16px; }
+.card.fig img { display: block; width: 100%; height: auto; border-radius: 8px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pills button { font-size: 12px; padding: 5px 10px; color: var(--text-muted); background: var(--surface-1); }
+.pills button.on { color: var(--text-primary); background: var(--surface-2); box-shadow: inset 0 -2px 0 var(--model); }
+output.note { margin-left: 4px; }

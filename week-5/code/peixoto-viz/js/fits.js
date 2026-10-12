@@ -307,7 +307,7 @@ export class MDL {
   snapshot(sweep, phase, moves) {
     return {
       sweep, phase, moves, LL: this.LL, parts: priorParts(this.F.P, this.E, this.m, this.z),
-      W: Float32Array.from(this.F.W), z: this.z.slice(), m: this.m.slice(), E: this.E,
+      W: Float32Array.from(this.F.W), z: this.z.slice(), m: this.m.slice(), E: this.E, cat: Int16Array.from(this.cat),
     };
   }
 

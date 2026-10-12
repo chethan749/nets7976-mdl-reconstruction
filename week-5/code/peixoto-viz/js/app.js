@@ -2,6 +2,8 @@ import * as I from "./ising.js";
 import { l1Grid, l1LambdaMax, priorParts, sumParts } from "./fits.js";
 import { C, el, frame, line, dot, label, refLine, legend, tiles, showTip, hideTip, fmt } from "../../../../week-3/code/viz-common/charts.js";
 import { clipped } from "../../../../week-4/code/viz-common/charts4.js";
+import { initReplicas } from "./replicas.js";
+import { initMoves, movesReset, movesRedraw } from "./moves.js";
 
 const $ = (id) => document.getElementById(id);
 const clear = (id) => { const e = $(id); e.replaceChildren(); return e; };
@@ -69,7 +71,8 @@ const CIRCLE = Array.from({ length: 34 }, (_, i) => { const a = -Math.PI / 2 + (
 const PP = I.pairs(34);
 
 // W: weights by pair. ref: true weights (colour by true/spurious, and draw missed edges). wscale: px per unit weight.
-function drawNet(box, W, { ref = null, pos = POS, height = 300, wscale = 9, maxw = 4, alpha = 0.85 } = {}) {
+// marks: extra pairs drawn on top, [{ p, color, width, opacity }]
+function drawNet(box, W, { ref = null, pos = POS, height = 300, wscale = 9, maxw = 4, alpha = 0.85, marks = [] } = {}) {
   const Wd = Math.max(280, box.clientWidth), H = height, pad = 14;
   const svg = el("svg", { viewBox: `0 0 ${Wd} ${H}`, width: "100%", class: "chart" }, box);
   const X = pos.map(([x, y]) => [pad + x * (Wd - 2 * pad), pad + y * (H - 2 * pad)]);
@@ -81,6 +84,10 @@ function drawNet(box, W, { ref = null, pos = POS, height = 300, wscale = 9, maxw
     const attrs = { x1: a[0], y1: a[1], x2: b[0], y2: b[1] };
     if (w === 0) el("line", { ...attrs, stroke: C.muted, "stroke-width": 0.8, opacity: 0.35 }, g);
     else el("line", { ...attrs, stroke: !ref || t !== 0 ? C.g1 : C.g2, "stroke-width": Math.min(maxw, 0.5 + wscale * Math.abs(w)), opacity: alpha }, !ref || t !== 0 ? g : top);
+  }
+  for (const mk of marks) {
+    const a = X[PP.I[mk.p]], b = X[PP.J[mk.p]];
+    el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: mk.color, "stroke-width": mk.width ?? 3, opacity: mk.opacity ?? 1, "stroke-linecap": "round" }, svg);
   }
   X.forEach(([x, y]) => el("circle", { cx: x, cy: y, r: 3.6, fill: C.ink2, stroke: C.surface, "stroke-width": 1.2 }, svg));
   return svg;
@@ -121,6 +128,7 @@ async function recompute() {
     ["fit", "cats"].forEach((id) => $(id).classList.remove("busy"));
     renderFit();
     renderCats();
+    movesReset();
     if (fitSeen) play();
   });
   const l1Done = Promise.all([-1, 0, 1, 2, 3, 4].map((fold) => runJob({ task: "l1", data, lams, fold }))).then((l1) => {
@@ -646,6 +654,8 @@ document.querySelectorAll("section").forEach((s) => navObs.observe(s));
 $("c-M").value = Ms.indexOf(S.M);
 $("o-M").textContent = S.M;
 renderPrior();
+initReplicas();
+initMoves({ fit: () => S.fit, frame: () => S.frame, data: () => S.data, net: () => S.net, drawNet });
 loadCompare();
 recompute();
-window.addEventListener("resize", debounce(() => { renderData(); renderDensity(); renderPrior(); renderL1(); renderFit(); renderCats(); renderCompare(); }, 200));
+window.addEventListener("resize", debounce(() => { renderData(); renderDensity(); renderPrior(); renderL1(); renderFit(); renderCats(); renderCompare(); movesRedraw(); }, 200));

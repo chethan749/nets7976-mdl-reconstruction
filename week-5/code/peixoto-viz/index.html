@@ -20,8 +20,10 @@
       <li><a href="#density">A density is not a code</a></li>
       <li><a href="#prior">The MDL prior</a></li>
       <li><a href="#fit">Fitting it</a></li>
+      <li><a href="#moves">Inside a sweep</a></li>
       <li><a href="#cats">What categories buy</a></li>
       <li><a href="#compare">MDL vs. L1 as data grow</a></li>
+      <li><a href="#replicas">Macrostates</a></li>
       <li><a href="#left">What this page leaves out</a></li>
     </ol>
   </nav>
@@ -49,7 +51,8 @@
           <li><strong>L1 regularization</strong> gets zeros by shrinking every weight, so sparsity and accuracy fight (§1).</li>
           <li>A prior <strong>density</strong> on real weights is not a description length, so MAP can't choose the sparsity (§2).</li>
           <li>Quantize the weights and let a hierarchy of discrete priors <strong>learn the weight distribution</strong> (§3).</li>
-          <li>The result is no longer convex, so fit it with greedy moves that each <strong>lower Σ</strong> (§4–5), and check it (§6).</li>
+          <li>The result is no longer convex, so fit it with greedy moves that each <strong>lower Σ</strong> (§4–6), and check it (§7).</li>
+          <li>The fitted model is a <strong>generative model</strong>: on modular networks its states split into macrostates (§8).</li>
         </ol>
       </header>
 
@@ -244,14 +247,14 @@
         <p>
           The prior is no longer convex, so the paper replaces the LASSO solver with a set of moves. Each move is tried and kept
           only if it shortens the description. One sweep runs through all of them, and the fit stops when a few sweeps in a row change
-          nothing. Press play to watch the fit on your data.
+          nothing. Press play to watch the fit on your data. The fit uses fast deterministic steps; §5 takes the moves one at a time and runs each exactly as the paper does.
         </p>
         <table class="recipe card">
           <tr><th>Move</th><th>What it proposes</th><th>Here</th></tr>
           <tr><td>Edge update</td><td>For a pair (i, j), one of: (1) move it to an existing category z_k, (2) give it a new value, which opens a new category, (3) set it to 0.</td><td>All 561 pairs each sweep. The paper visits only the κN best candidates found by NNDescent, which is what makes it subquadratic.</td></tr>
           <tr><td>Edge move</td><td>Slide an edge (i, j) to (i, u): same value, new endpoint.</td><td>One try per node per sweep.</td></tr>
           <tr><td>Edge swap</td><td>Exchange endpoints of two edges, (i, j), (u, v) → (i, v), (u, j). Counts, and so the prior, are unchanged.</td><td>N tries per sweep.</td></tr>
-          <tr><td>Category value</td><td>Move one z_k, and with it every edge in that category.</td><td>A 1-D golden-section search.</td></tr>
+          <tr><td>Category value</td><td>Move one z_k, and with it every edge in that category.</td><td>A 1-D golden-section search. §5 runs the paper's random bisection.</td></tr>
           <tr><td>Merge / split</td><td>Fuse two neighbouring categories, or cut one in two, then re-search the values.</td><td>One of each per sweep. The split cuts at the biggest gap in the values each edge would prefer, not at random.</td></tr>
         </table>
         <div class="section-controls mt">
@@ -292,8 +295,65 @@
       </section>
 
       <!-- 5 -->
+      <section id="moves">
+        <div class="sec-head"><span class="sec-num">5</span><h2>Inside a sweep: each move, as the paper runs it</h2></div>
+        <div class="refs">§V · Eqs. (28)–(29) · random bisection, Ref. [63] · merge-split, Ref. [64]</div>
+        <div class="transition">
+          <span class="dist">one state of the fit</span><span class="op"><b>propose</b> one move</span>
+          <span class="dist">ΔΣ(x) for every value x the move could take</span><span class="op"><b>random bisection</b></span>
+          <span class="dist to">keep it only if ΔΣ &lt; 0</span><span class="exactness">exact ΔΣ at every probe</span>
+        </div>
+        <p>
+          Pick a move and a state of the fit, and the page proposes one move of that kind, exactly as §V describes it. For moves that choose a
+          value, the grey curve is the full 1-D problem: the exact change in description length ΔΣ for every value the move could pick. The search
+          never sees that curve. It only evaluates ΔΣ at its probes (numbered circles), keeping a bracket (shaded) that contains the best point
+          found so far (black dot). <strong>Random</strong> bisection draws each probe uniformly inside the bracket, where a
+          <strong>deterministic</strong> search would always take the same golden-section point. The move is kept only if the value it ends on
+          gives ΔΣ &lt; 0.
+        </p>
+        <div class="section-controls">
+          <span class="pills" id="c-move"></span>
+        </div>
+        <div class="section-controls">
+          <span class="ctl-group-label">State</span>
+          <span class="seg" id="c-mwhich"><button data-w="early" class="on">early in the fit</button><button data-w="step">§4's current step</button><button data-w="final">converged</button></span>
+          <span class="ctl-group-label">Search</span>
+          <span class="seg" id="c-mrand"><button data-r="1" class="on">random</button><button data-r="0">deterministic</button></span>
+          <button id="c-mnew" class="primary">New proposal</button>
+          <button id="c-mmulti">Find a pair with several dips</button>
+          <button id="c-mplay">Replay</button>
+          <button id="c-mrep">Repeat the search 50×</button>
+          <output class="note" id="o-mstate"></output>
+        </div>
+        <div id="t-moves"></div>
+        <div class="grid-2">
+          <div class="card">
+            <h3 id="h-msearch">The search</h3>
+            <p class="sub" id="s-msearch"></p>
+            <div class="plot" id="p-msearch"></div>
+          </div>
+          <div class="card">
+            <h3>What the move touches</h3>
+            <p class="sub">The state's network (blue true, red spurious). Violet: the entries being changed or added. Orange: entries being removed.
+              For a split, each edge in the category is violet or aqua, for the side it is on.</p>
+            <div class="plot" id="p-mnet"></div>
+          </div>
+        </div>
+        <div class="takeaway">
+          <b>What the randomness buys, and what it doesn't.</b> Along one weight, the Ising log-likelihood is concave and λ|w| is convex, so the
+          continuous searches (a new value, a category value, a merged value) have a single minimum, and random and deterministic searches agree:
+          try "Repeat" on one. The discrete choice of an existing category can have several dips, because joining a big category is cheaper for the
+          prior (the log m_k! terms) while the data prefer the nearest value. Click <strong>Find a pair with several dips</strong>, then
+          <strong>Repeat</strong>. The deterministic search lands in the same dip every time; random searches end in different ones, so over
+          repeated sweeps the best one is eventually found and kept. That is the sense in which random bisection "eventually succeeds" (Ref. [63]).
+          It is not a guarantee of the best overall W: the moves change one or a few entries at a time, and §V claims a good optimum, not the global one.
+          No derivative is used in any of these searches; gradients appear only in Eq. (29), to rank candidates before any category exists.
+        </div>
+      </section>
+
+      <!-- 6 -->
       <section id="cats">
-        <div class="sec-head"><span class="sec-num">5</span><h2>What the categories buy</h2></div>
+        <div class="sec-head"><span class="sec-num">6</span><h2>What the categories buy</h2></div>
         <div class="refs">§IV, discussion after Eq. (27)</div>
         <div class="transition">
           <span class="dist">the fitted edges, fixed</span><span class="op"><b>force K</b></span>
@@ -325,9 +385,9 @@
         </div>
       </section>
 
-      <!-- 6 -->
+      <!-- 7 -->
       <section id="compare">
-        <div class="sec-head"><span class="sec-num">6</span><h2>MDL vs. L1 as data grow</h2></div>
+        <div class="sec-head"><span class="sec-num">7</span><h2>MDL vs. L1 as data grow</h2></div>
         <div class="refs">§V.A · Eq. (30) · Fig. 2</div>
         <div class="transition">
           <span class="dist">M = 100 … 3200</span><span class="op"><b>3 fits</b></span>
@@ -353,16 +413,78 @@
         </div>
       </section>
 
-      <!-- 7 -->
+      <!-- 8 -->
+      <section id="replicas">
+        <div class="sec-head"><span class="sec-num">8</span><h2>Macrostates: broken replica symmetry</h2></div>
+        <div class="refs">§VI.A · Eqs. (35), (38) · Fig. 8(a)</div>
+        <div class="transition">
+          <span class="dist">P(x | W, θ) = e^{Σ W_ij x_i x_j + Σ θ_i x_i} / Z</span><span class="op"><b>strong, modular W</b></span>
+          <span class="dist to">P(x | W, θ) = Σ_α P(x | α) P(α)</span><span class="exactness">islands the dynamics can't leave</span>
+        </div>
+        <p>
+          A reconstructed network is also a generative model, which is what the paper uses to predict interventions. On a modular
+          network with strong couplings, the equilibrium Ising distribution (Eq. 35) falls apart into islands of high probability
+          separated by valleys of low probability. Dynamics started on one island stays there for a time that grows exponentially with
+          N, so what you would actually observe is <span class="m">P(x | α)</span> for one macrostate α, not the whole mixture.
+          Here eight replicas of one toy model (five modules of twelve spins, all +1 inside a module, a few ±0.6 couplings between modules,
+          θ = 0) run the same heat-bath dynamics from random starts. The overlap <span class="m">q = (1/N) Σ_i x_iᵃ x_iᵇ</span> between two
+          replicas measures whether they ended up in the same place.
+        </p>
+        <div class="card wide fig">
+          <h3>The landscape the replicas live on</h3>
+          <p class="sub">P(x | W) for this toy model at β = 0.2, over a 2-D layout of configuration space in which neighbouring peaks differ by
+            one module flip. Each of the 32 module sign patterns is a peak, with height ∝ exp(β Σ J_kl σ_k σ_l) from the summed inter-module
+            couplings J_kl. Six of them are drawn on the plane above, each joined to its peak by a dotted line. A pattern and its global flip
+            (the two P(α) = 0.078 configurations) have equal height, because θ = 0.</p>
+          <img src="img/landscape.png" alt="A rugged probability landscape with 32 peaks, one per macrostate; six metastable configurations, drawn as five rings of twelve spins, float on a plane above, each connected by a dotted line to its peak and labelled with its probability P(α)." width="1800" height="1350" loading="lazy" />
+        </div>
+        <div class="section-controls">
+          <label class="ctl">coupling β <input type="range" id="c-rbeta" min="0.03" max="0.35" step="0.01" value="0.2" class="wide" /><output id="o-rbeta"></output></label>
+          <span class="seg" id="c-rpreset"><button data-b="0.05">weak</button><button data-b="0.12">near the transition</button><button data-b="0.25">strong</button></span>
+          <button id="c-rreset">New random replicas</button>
+        </div>
+        <div class="tiles">
+          <div class="tile"><div class="tile-label">Distinct macrostates held</div><div class="tile-value" id="rs-distinct">–</div><div class="tile-note">a pattern and its global flip count once</div></div>
+          <div class="tile"><div class="tile-label">Macrostate switches</div><div class="tile-value" id="rs-switch">–</div><div class="tile-note">per 1000 sweeps, all replicas</div></div>
+          <div class="tile"><div class="tile-label">Sweeps run</div><div class="tile-value" id="rs-sweeps">0</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Replica 1, live</h3>
+            <p class="sub">Orange: x_i = +1 (present). Grey: −1 (absent). Lines between modules: aqua for +0.6, amber for −0.6.</p>
+            <div class="plot"><canvas id="rs-net" height="270"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>Every replica's macrostate</h3>
+            <p class="sub">One row per replica, one cell per module: orange mostly +1, blue mostly −1, faint undecided. A row's sign pattern is its α.</p>
+            <div class="plot"><canvas id="rs-reps" height="270"></canvas></div>
+          </div>
+          <div class="card wide">
+            <h3>Overlap distribution P(q)</h3>
+            <p class="sub">All 28 replica pairs over the last 600 sweeps. One peak: replica symmetric. Several: broken.</p>
+            <div class="plot"><canvas id="rs-pq" height="200"></canvas></div>
+          </div>
+        </div>
+        <div class="takeaway">
+          <b>Same W, different answers.</b> At weak coupling every replica explores the same distribution, q ≈ 0 for every pair,
+          and P(q) has one peak. Past the transition (β ≈ 1/11 in mean field for modules of twelve, a little higher here) each module commits to a sign and stays there.
+          Replicas freeze into different patterns, switches stop, and P(q) splits into peaks at ±1, ±0.6 and ±0.2: two replicas agreeing on
+          5, 4 or 3 of the 5 modules. Each frozen row is one term of Eq. (38). The keystone analysis (Eqs. 39–41) asks which single
+          knockout pushes a system off its island. In this toy the modules are identical and θ = 0, so the islands are equally likely.
+          In the inferred microbiome model, heterogeneous and mostly negative couplings between modules make P(α) uneven.
+        </div>
+      </section>
+
+      <!-- 9 -->
       <section id="left">
-        <div class="sec-head"><span class="sec-num">7</span><h2>What this page leaves out</h2></div>
+        <div class="sec-head"><span class="sec-num">9</span><h2>What this page leaves out</h2></div>
         <div class="refs">§V.B–D, §VI</div>
         <p>
           <strong>Community structure (§V.B).</strong> Replacing the uniform <span class="m">P(A | E)</span> by a degree-corrected SBM gives
           modular networks shorter descriptions, which regularizes further. Fitting it adds merge-split moves on the node partition (Ref. [64]). <strong>Node parameters (§V.C)</strong> such as Ising fields θ_i get the same quantized treatment, Eq. (34), with zero
           allowed. They are fixed at zero here. <strong>Empirical cases.</strong> The paper then reconstructs the Brazilian congress votes and the
           microbiome networks, where an L1 comparison is infeasible. On the microbiome it uses the fitted Ising model to predict which
-          species' removal tips the system into another macrostate.
+          species' removal tips the system into another macrostate (§8 shows what a macrostate is).
         </p>
         <p class="note">
           Implementation notes: kinetic Ising likelihood, exact, θ = 0. MDL uses λ = 1, Δ = 10⁻⁸ as in the paper, starts from the empty
